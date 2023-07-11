@@ -73,6 +73,17 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-mokhlef.php';
  *
  * @since    1.0.0
  */
+
+ require plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php';
+
+ $mokhlef_update_checker = Puc_v4_Factory::buildUpdateChecker(
+    'https://github.com/MakiOmar/Al-Mokhlef',
+    __FILE__,
+    plugin_basename(__FILE__)
+);
+//Set the branch that contains the stable release.
+$mokhlef_update_checker->setBranch('master');
+
 function run_mokhlef() {
 
 	$plugin = new Mokhlef();
