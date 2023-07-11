@@ -150,67 +150,57 @@ class Mokhlef_Public {
 		if (!$product->get_manage_stock()) {
 			return $passed;
 		}
+	
 		$user_cart_items = $this->get_cart_items(get_current_user_id(), $product_id);
+		$masg = 'الاختيار الذي تم طلبه غير متاح في المخزون قم باختيار اقل من هذه الكمية.';
 		//error_log($product->is_type( 'variable' ));
 		if ( $product->is_type( 'variable' ) ) {
 			// For variable products, we need to check the stock quantity of the selected variation.
 			$variation_id = $_POST['variation_id'];
 			$variation = wc_get_product( $variation_id );
 			$multiplier = $variation->get_meta( '_stock_multiplier' );
-			
-			if( $multiplier && !empty( $multiplier ) ){
+			if( $multiplier && !empty( $multiplier ) ){	
 				//Adjust quantity
 				$quantity = $quantity * $multiplier;
 			}
-			
-			
+			if( $user_cart_items && is_array( $user_cart_items ) && !empty( $user_cart_items ) ){
+				foreach( $user_cart_items as $user_cart_item ){
+					$pre_variation_id = $user_cart_item['variation_id'];
+					$pre_variation = wc_get_product( $pre_variation_id );
+					$pre_multiplier = $pre_variation->get_meta( '_stock_multiplier' );
+					if( $pre_multiplier && !empty( $pre_multiplier ) ){	
+						$quantity +=( $user_cart_item['quantity'] *  $pre_multiplier);
+					}
+				}
+				
+			}
+		
 			if ( ! $variation->is_in_stock() || $quantity > $variation->get_stock_quantity() ||  $quantity > $product->get_stock_quantity() ) {
-				wc_add_notice( 'الاختيار الذي تم طلبه غير متاح في المخزون قم باختيار اقل من هذه الكمية.', 'error' );
+				wc_add_notice( $masg , 'error' );
 				$passed = false;
 			}
 		} else {
 			$multiplier = $product->get_meta( '_stock_multiplier' );
 			
-			if( $multiplier && !empty( $multiplier ) ){
+			if( $multiplier && !empty( $multiplier ) ){	
 				//Adjust quantity
 				$quantity = $quantity * $multiplier;
 			}
-			
+			if( $user_cart_items && is_array( $user_cart_items ) && !empty( $user_cart_items ) ){
+				foreach( $user_cart_items as $user_cart_item ){
+					$pre_product_id = $user_cart_item['product_id'];
+					$pre_product = wc_get_product( $pre_product_id );
+					$pre_multiplier = $pre_product->get_meta( '_stock_multiplier' );
+
+					if( $pre_multiplier && !empty( $pre_multiplier ) ){	
+						$quantity +=( $user_cart_item['quantity'] *  $pre_multiplier);
+					}
+				}
+			}
 			// For simple and other product types, we can check the global stock quantity.
 			if ( ! $product->is_in_stock() || $quantity > $product->get_stock_quantity() ) {
-				wc_add_notice( 'الاختيار الذي تم طلبه غير متاح في المخزون قم باختيار اقل من هذه الكمية', 'error' );
+				wc_add_notice( $masg , 'error' );
 				$passed = false;
-			}
-		}
-		foreach( $user_cart_items as $user_cart_item ){
-			//If is variable product
-			if( 0 != $user_cart_item['parent_product_id'] ){
-				$variation_id = $user_cart_item['variation_id'];
-				$variation = wc_get_product( $variation_id );
-				$multiplier = $variation->get_meta( '_stock_multiplier' );
-				if( $multiplier && !empty( $multiplier ) ){
-					//Adjust quantity
-					$quantity = ($quantity + $user_cart_item['quantity']) * $multiplier;
-				}
-				
-
-				if ( ! $variation->is_in_stock() || $quantity > $variation->get_stock_quantity() ||  $quantity > $product->get_stock_quantity() ) {
-					wc_add_notice( 'الاختيار الذي تم طلبه غير متاح في المخزون قم باختيار اقل من هذه الكمية.', 'error' );
-					$passed = false;
-				}
-			}else{
-				$multiplier = $product->get_meta( '_stock_multiplier' );
-			
-				if( $multiplier && !empty( $multiplier ) ){
-					//Adjust quantity
-					$quantity = ($quantity + $user_cart_item['quantity']) * $multiplier;
-				}
-
-				// For simple and other product types, we can check the global stock quantity.
-				if ( ! $product->is_in_stock() || $quantity > $product->get_stock_quantity() ) {
-					wc_add_notice( 'الاختيار الذي تم طلبه غير متاح في المخزون قم باختيار اقل من هذه الكمية', 'error' );
-					$passed = false;
-				}
 			}
 		}
 		return $passed;
