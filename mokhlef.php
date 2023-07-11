@@ -16,7 +16,7 @@
  * Plugin Name:       Al-Mokhlef Optimizations
  * Plugin URI:        https://https://makiomar.com
  * Description:       A plugin built specially for Al-Mokhlef for optimizations.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            Mohammad Omar
  * Author URI:        https://https://github.com/MakiOmar
  * License:           GPL-2.0+
@@ -81,7 +81,7 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-mokhlef.php';
     __FILE__,
     plugin_basename(__FILE__)
 );
-//Set the branch that contains the stable release.
+//Set the branch that contains the stable release..
 $mokhlef_update_checker->setBranch('master');
 
 function run_mokhlef() {
