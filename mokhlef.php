@@ -9,14 +9,14 @@
  * that starts the plugin.
  *
  * @link              https://https://github.com/MakiOmar
- * @since             1.0.02
+ * @since             1.0.0
  * @package           Mokhlef
  *
  * @wordpress-plugin
  * Plugin Name:       Al-Mokhlef Optimizations
  * Plugin URI:        https://https://makiomar.com
  * Description:       A plugin built specially for Al-Mokhlef for optimizations.
- * Version:           1.0.1
+ * Version:           1.0.02
  * Author:            Mohammad Omar
  * Author URI:        https://https://github.com/MakiOmar
  * License:           GPL-2.0+
