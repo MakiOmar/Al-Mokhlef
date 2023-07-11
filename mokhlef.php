@@ -9,7 +9,7 @@
  * that starts the plugin.
  *
  * @link              https://https://github.com/MakiOmar
- * @since             1.0.0
+ * @since             1.0.02
  * @package           Mokhlef
  *
  * @wordpress-plugin
