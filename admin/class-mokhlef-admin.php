@@ -117,6 +117,7 @@ class Mokhlef_Admin {
 			'label'         => esc_html__( 'Dynamic Pricing master', 'woocommerce' ),
 			'description'   => esc_html__( 'If cart contains this variation, other cart variations will use dynamic pricing', 'woocommerce' ),
 			'desc_tip'      => true,
+			'class'         => 'dynamic_pricing_master',
 			'value'         => $variation->get_meta( 'mokh_variation_dynamic_pricing_master')
 		) );
 
@@ -151,5 +152,31 @@ class Mokhlef_Admin {
 		$variation->save();
 	}
 	
+	public function scripts(){
+		$screen = get_current_screen();
+	
+  		if ($screen && $screen->post_type === 'product') {
+		?>
+
+		<script>
+			jQuery(document).ready(function($) {
+				'use strict';
+				// Attach a click event handler to the checkboxes
+				$('body').on("click", '.dynamic_pricing_master', function() {
+					console.log($(this));
+					// If the current checkbox is checked
+					if ($(this).is(':checked')) {
+						// Iterate over all other checkboxes with the same name
+						$('.dynamic_pricing_master').not(this).each(function() {
+							// Uncheck the checkbox
+							$(this).prop('checked', false);
+						});
+					}
+				});
+			});
+		</script>
+		<?php
+		}
+	}
 
 }

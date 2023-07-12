@@ -166,6 +166,8 @@ class Mokhlef {
 		// Save the Dynamic Price text field value
 		$this->loader->add_action( 'woocommerce_admin_process_variation_object', $plugin_admin, 'save_variation_dynamic_price_field', 10, 2 );
 
+		$this->loader->add_action( 'admin_footer', $plugin_admin, 'scripts', 10, 2 );
+
 	}
 
 	/**
