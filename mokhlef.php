@@ -16,7 +16,7 @@
  * Plugin Name:       Al-Mokhlef Optimizations
  * Plugin URI:        https://https://makiomar.com
  * Description:       A plugin built specially for Al-Mokhlef for optimizations.
- * Version:           1.0.02
+ * Version:           1.0.03
  * Author:            Mohammad Omar
  * Author URI:        https://https://github.com/MakiOmar
  * License:           GPL-2.0+
