@@ -205,6 +205,13 @@ class Mokhlef_Public {
 		}
 		return $passed;
 	}
+
+	/**
+	 * Check if a cart contains a variation that has dynamic pricing master is enabled, for a product. 
+	 *
+	 * @param int $product_id
+	 * @return mixed Return the dynamic pricing master variation object if true, otherwise false.
+	 */
 	public function cart_variable_has_dynamic_pricing_master($product_id){
 		$cart_items = $this->get_cart_items(get_current_user_id(), $product_id);
 		foreach( $cart_items as $cart_item ){
@@ -215,12 +222,36 @@ class Mokhlef_Public {
 				$dynamic_pricing_master = $variation->get_meta( 'mokh_variation_dynamic_pricing_master');
 
 				if( 'yes' == $dynamic_pricing_master ){
-					return true;
+					return $variation;
 				}
 			}
 		}
 
 		return false;
+	}
+	public function get_variations_master( $product_id ){
+		// Get the product object
+		$product = wc_get_product( $product_id );
+		$master = false;
+		// Check if the product has variations
+		if ( $product->is_type( 'variable' ) ) {
+
+			// Get the variations
+			$variations = $product->get_available_variations();
+
+			// Loop through the variations
+			foreach ( $variations as $variation ) {
+				// Get variation dynamic master value
+				$dynamic_pricing_master = $variation->get_meta( 'mokh_variation_dynamic_pricing_master');
+
+				//Check if this variation is set to be the dynamic master;
+				if( 'yes' == $dynamic_pricing_master ){
+					$master = $variation;
+				}
+			}
+		}
+
+		return $master;
 	}
 	public function conditional_variation_dynamic_pricing( $cart ) {
 		// Check if we are on the cart or checkout page
@@ -235,17 +266,31 @@ class Mokhlef_Public {
 			if ( $product->is_type( 'variation' ) ) {
 				$parent_id = $product->get_parent_id();
 				$dynamic_pricing_master = $product->get_meta( 'mokh_variation_dynamic_pricing_master');
-				if( !$this->cart_variable_has_dynamic_pricing_master($parent_id) || 'yes' == $dynamic_pricing_master ){
+				$master_variation = $this->cart_variable_has_dynamic_pricing_master($parent_id);
+				
+				if( !$master_variation || 'yes' == $dynamic_pricing_master ){
+					
 					continue;
 				}
+				$master_variation_multiplier  = $master_variation->get_meta( '_stock_multiplier' );
+				$current_variation_multiplier = $product->get_meta( '_stock_multiplier' );
 
-				$variation_id = $cart_item['variation_id'];
 				// Check if the variation has a Dynamic Price value set
-				$variation_dynamic_price = get_post_meta( $variation_id, 'mokh_variation_dynamic_price', true );
+				$variation_dynamic_price = get_post_meta( $cart_item['variation_id'], 'mokh_variation_dynamic_price', true );
 				if ( $variation_dynamic_price ) {
+
 					// Set the price of the variation to the Dynamic Price value
 					$cart_item['data']->set_price( $variation_dynamic_price );
+
+				}elseif( $master_variation_multiplier && $current_variation_multiplier && !empty( $current_variation_multiplier ) && !empty( $master_variation_multiplier ) ){
+					
+					$percent = $current_variation_multiplier / $master_variation_multiplier;
+					$current_variation_price = $percent * $master_variation->get_price();
+					$cart_item['data']->set_price( $current_variation_price );
+					
 				}
+
+
 				// Check if the Variation Dynamic Pricing checkbox is checked for the current product
 				if ( $this->is_variation_dynamic_pricing_enabled( $parent_id ) ) {
 					
