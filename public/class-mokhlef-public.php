@@ -299,4 +299,39 @@ class Mokhlef_Public {
 		}
 	}
 
+	function add_values_to_order_item_meta( $item, $cart_item_key, $values, $order ) {
+
+		/**
+		 * I Discovered that the plugin stores the offer id in a meta key of name `_fgf_gift_rule_id`.
+		 * Plugin name: Free Gifts for WooCommerce.
+		 * Author: FantasticPlugins.
+		 * URI: https://woocommerce.com/products/free-gifts-for-woocommerce/
+		 */
+
+		$fgf_gift_product = isset( $values['fgf_gift_product'] ) ? $values['fgf_gift_product'] : array();
+		//error_log(print_r( $item->get_meta('_fgf_gift_rule_id') ,true));
+		if( !empty( $fgf_gift_product ) && is_array( $fgf_gift_product ) )
+		{
+			$item->update_meta_data( '_fgf_gift_rule_title', get_post_field('post_title', intval( $item->get_meta('_fgf_gift_rule_id') )) );
+		}
+
+	}
+
+	/**
+	 * Change displayed label for specific order item meta key.
+	 *
+	 * @param string $display_key Meta's display key.
+	 * @param object $meta Meta's object.
+	 *
+	 * @return string Meta's display key.
+	 */
+	public function order_item_display_meta_key( $display_key, $meta ) {
+		
+		if( '_fgf_gift_rule_title' === $meta->key ){
+			return 'Offer: ';
+		}
+		return $display_key;
+
+	}
+
 }

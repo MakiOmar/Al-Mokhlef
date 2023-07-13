@@ -181,13 +181,15 @@ class Mokhlef {
 
 		$plugin_public = new Mokhlef_Public( $this->get_plugin_name(), $this->get_version() );
 
+		//Actions
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-
-		$this->loader->add_filter( 'woocommerce_add_to_cart_validation', $plugin_public, 'add_to_cart_validation', 10, 3 );
 		$this->loader->add_action( 'woocommerce_before_calculate_totals', $plugin_public, 'conditional_variation_dynamic_pricing', 10, 1 );
-		
+		$this->loader->add_action( 'woocommerce_checkout_create_order_line_item', $plugin_public,'add_values_to_order_item_meta', 10, 4 );
 
+		//Filters
+		$this->loader->add_filter( 'woocommerce_add_to_cart_validation', $plugin_public, 'add_to_cart_validation', 10, 3 );
+		$this->loader->add_filter( 'woocommerce_order_item_display_meta_key', $plugin_public, 'order_item_display_meta_key', 99, 2 );	
 	}
 
 	/**
