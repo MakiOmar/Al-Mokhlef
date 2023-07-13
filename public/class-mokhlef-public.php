@@ -312,7 +312,9 @@ class Mokhlef_Public {
 		//error_log(print_r( $item->get_meta('_fgf_gift_rule_id') ,true));
 		if( !empty( $fgf_gift_product ) && is_array( $fgf_gift_product ) )
 		{
-			$item->update_meta_data( '_fgf_gift_rule_title', get_post_field('post_title', intval( $item->get_meta('_fgf_gift_rule_id') )) );
+			$offer_title = get_post_field('post_title', intval( $item->get_meta('_fgf_gift_rule_id') ));
+			$item->update_meta_data( '_fgf_gift_rule_title', wp_strip_all_tags($offer_title) );
+			$order->update_meta_data('_fgf_gift_rule_title', wp_strip_all_tags($offer_title) );
 		}
 
 	}
@@ -332,6 +334,15 @@ class Mokhlef_Public {
 		}
 		return $display_key;
 
+	}
+
+	function display_order_meta($order) {
+		$meta_value = $order->get_meta('_fgf_gift_rule_title');
+		if ( !empty( $meta_value ) ) {
+			
+			echo '<p><strong>' . esc_html__( 'Offer:', 'woocommerce' ) . '</strong> ' . $meta_value . '</p>';
+			
+		}
 	}
 
 }
