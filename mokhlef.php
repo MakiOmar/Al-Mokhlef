@@ -15,7 +15,7 @@
  * @wordpress-plugin
  * Plugin Name:       Support team edits
  * Plugin URI:        https://makiomar.com
- * Description:       A plugin built specially for Al-Mokhlef for optimizations.
+ * Description:       A plugin built specially for Support team edits.
  * Version:           1.0.05
  * Author:            Mohammad Omar
  * Author URI:        https://https://github.com/MakiOmar
