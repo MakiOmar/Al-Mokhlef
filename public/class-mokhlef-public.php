@@ -40,6 +40,9 @@ class Mokhlef_Public {
 	 */
 	private $version;
 
+	public static $dynamic_claculations = false;
+	public static $dynamic_prices       = false;
+
 	/**
 	 * Initialize the class and set its properties.
 	 *
@@ -229,16 +232,37 @@ class Mokhlef_Public {
 
 		return false;
 	}
+
+	public function db_get_variations_master( $product_id ){
+		include_once( WC_ABSPATH . 'includes/abstracts/abstract-wc-product.php' );
+		$variations_ids = $this->query_variations_ids( $product_id );
+		$master_variation = false;
+		foreach( $variations_ids as $var_id ){
+			$variation = wc_get_product( $var_id );
+			// Get variation dynamic master value
+			$is_pricing_master = $variation->get_meta( 'mokh_variation_dynamic_pricing_master');
+
+			//Check if this variation is set to be the dynamic master;
+			if( 'yes' == $is_pricing_master ){
+				$master_variation = $variation;
+				break;
+			}
+		}
+
+		return $master_variation;
+	}
 	public function get_variations_master( $product_id ){
 		// Get the product object
 		$product = wc_get_product( $product_id );
+
+		
 		$master = false;
 		// Check if the product has variations
 		if ( $product->is_type( 'variable' ) ) {
 
 			// Get the variations
 			$variations = $product->get_available_variations();
-
+			
 			// Loop through the variations
 			foreach ( $variations as $variation ) {
 				// Get variation dynamic master value
@@ -247,6 +271,7 @@ class Mokhlef_Public {
 				//Check if this variation is set to be the dynamic master;
 				if( 'yes' == $dynamic_pricing_master ){
 					$master = $variation;
+					break;
 				}
 			}
 		}
@@ -336,7 +361,7 @@ class Mokhlef_Public {
 
 	}
 
-	function display_order_meta($order) {
+	public function display_order_meta($order) {
 		$meta_value = $order->get_meta('_fgf_gift_rule_title');
 		if ( !empty( $meta_value ) ) {
 			
@@ -344,5 +369,91 @@ class Mokhlef_Public {
 			
 		}
 	}
+	/**
+	 * Get results and make sure check cache first.
+	 *
+	 * @param string $prepared_query Mysql query.Must be prepared first.
+	 * @param string $cache_key WP cache key.
+	 * @param string $x Column to return. Indexed from 0.
+	 * @param string $group Where to group the cache contents. Enables the same key to be used across groups.
+	 * @param int    $expiry When to expire the cache contents, in seconds. Default 0 (no expiration).
+	 * @return array Database query result. Array indexed from 0 by SQL result row number.
+	 */
+	public function get_col( $prepared_query, $cache_key, $x = 0, $group = '', $expiry = 0 ) {
+
+		global $wpdb;
+
+		$results = wp_cache_get( $cache_key );
+
+		if ( false === $results ) {
+
+			// phpcs:disable
+			$results = $wpdb->get_col( $prepared_query, $x );
+			// phpcs:enable
+
+			wp_cache_set( $cache_key, $results, $group, $expiry );
+
+		}
+
+		return $results;
+	}
+	public function query_variations_ids( $product_id ){
+		global $wpdb;
+		$query = $wpdb->prepare(
+			"
+			SELECT ID
+			FROM {$wpdb->prefix}posts
+			WHERE post_parent = %d
+			AND post_type = 'product_variation'
+			",
+			$product_id
+		);
+		
+
+		return $this->get_col($query, 'query_variations_ids_' . $product_id);
+
+	}
+	public function frontend_dynamic_variation_price( $price, $product ) {
+		
+		$variation_id = $product->get_id();
+		$parent_id = $product->get_parent_id();
+		
+		$dynamic_pricing_master = $product->get_meta( 'mokh_variation_dynamic_pricing_master');
+
+		if( 'yes' == $dynamic_pricing_master ){ 
+			return $price ;
+		}		
+		
+		if( self::$dynamic_claculations && isset( self::$dynamic_prices[$variation_id] )){ 
+			return self::$dynamic_prices[$variation_id] ;
+		}
+		
+		$master_variation = $this->db_get_variations_master( $parent_id );
+		
+
+		if( $master_variation ){
+			$master_variation_multiplier  = $master_variation->get_meta( '_stock_multiplier' );
+			$current_variation_multiplier = $product->get_meta( '_stock_multiplier' );
+
+			// Check if the variation has a Dynamic Price value set
+			$variation_dynamic_price = get_post_meta( $variation_id , 'mokh_variation_dynamic_price', true );
+			if ( $variation_dynamic_price ) {
+				self::$dynamic_prices[$variation_id] = $variation_dynamic_price;
+				// Set the price of the variation to the Dynamic Price value
+				return $variation_dynamic_price ;
+
+			}elseif( $master_variation_multiplier && $current_variation_multiplier && !empty( $current_variation_multiplier ) && !empty( $master_variation_multiplier ) ){
+				
+				$percent = $current_variation_multiplier / $master_variation_multiplier;
+				$current_variation_price = $percent * $master_variation->get_price();
+				self::$dynamic_prices[$variation_id] = $current_variation_price;
+				return $current_variation_price;
+				
+			}
+		}
+		self::$dynamic_claculations = true;
+		return $price;
+	}
+	
 
 }

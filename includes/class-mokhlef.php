@@ -190,6 +190,8 @@ class Mokhlef {
 		//Filters
 		$this->loader->add_filter( 'woocommerce_add_to_cart_validation', $plugin_public, 'add_to_cart_validation', 10, 3 );
 		$this->loader->add_filter( 'woocommerce_order_item_display_meta_key', $plugin_public, 'order_item_display_meta_key', 99, 2 );	
+		$this->loader->add_filter( 'woocommerce_product_variation_get_price', $plugin_public, 'frontend_dynamic_variation_price', 10, 2 );
+		//$this->loader->add_filter( 'woocommerce_variable_price_html', $plugin_public, 'frontend_dynamic_variation_price', 10, 2 );
 	}
 
 	/**
