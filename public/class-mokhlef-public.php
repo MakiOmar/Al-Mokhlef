@@ -416,23 +416,36 @@ class Mokhlef_Public {
 	public function frontend_dynamic_variation_price( $price, $product ) {
 		
 		$variation_id = $product->get_id();
-		$parent_id = $product->get_parent_id();
+		
+
+		if( self::$dynamic_claculations && isset( self::$dynamic_prices[$variation_id] )){ 
+			return self::$dynamic_prices[$variation_id] ;
+		}
 		
 		$dynamic_pricing_master = $product->get_meta( 'mokh_variation_dynamic_pricing_master');
 
 		if( 'yes' == $dynamic_pricing_master ){ 
 			return $price ;
-		}		
-		
-		if( self::$dynamic_claculations && isset( self::$dynamic_prices[$variation_id] )){ 
-			return self::$dynamic_prices[$variation_id] ;
+		}
+
+		$cart = WC()->session->get('cart');
+
+		if( !$cart || empty( $cart ) ){
+			return $price ;
 		}
 		
-		$master_variation = $this->db_get_variations_master( $parent_id );
-		
+		$parent_id = $product->get_parent_id();
 
-		if( $master_variation ){
+		$master_variation = $this->db_get_variations_master( $parent_id );
+
+		$cart_variations = array_column($cart, 'variation_id');
+
+		if( $master_variation && in_array( $master_variation->get_id(), $cart_variations )){
+
+			self::$dynamic_claculations = true;
+
 			$master_variation_multiplier  = $master_variation->get_meta( '_stock_multiplier' );
+
 			$current_variation_multiplier = $product->get_meta( '_stock_multiplier' );
 
 			// Check if the variation has a Dynamic Price value set
@@ -451,7 +464,6 @@ class Mokhlef_Public {
 				
 			}
 		}
-		self::$dynamic_claculations = true;
 		return $price;
 	}
 	
