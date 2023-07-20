@@ -414,7 +414,9 @@ class Mokhlef_Public {
 
 	}
 	public function frontend_dynamic_variation_price( $price, $product ) {
-		
+		if( is_admin() ){
+			return $price ;
+		}
 		$variation_id = $product->get_id();
 		
 
