@@ -16,7 +16,7 @@
  * Plugin Name:       Support team edits
  * Plugin URI:        https://makiomar.com
  * Description:       A plugin built specially for Support team edits.
- * Version:           1.0.10
+ * Version:           1.0.11
  * Author:            Mohammad Omar
  * Author URI:        https://https://github.com/MakiOmar
  * License:           GPL-2.0+
