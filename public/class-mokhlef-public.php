@@ -477,7 +477,7 @@ class Mokhlef_Public {
 
 				$args = $this->taxonomy_product_cat_args($paged, $category_slug);
 
-				$this->products_loop_html($args, $category_name, $paged, false);
+				$this->products_loop_html($args, $category_name, $paged, true);
 				
 				?>
 
@@ -489,21 +489,12 @@ class Mokhlef_Public {
 	public function override_product_cat_template($template) {
 		// Check if we are on the product category taxonomy archive
 		if (is_tax('product_cat')) {
-			ob_start();
+			// Get the absolute file path to the plugin directory
+			$plugin_path = plugin_dir_path(__FILE__);
 
-			get_header();
-			$this->taxonomy_product_cat_output();
-			get_footer();
-
-			// Call the taxonomy_product_cat_output method to get the custom content
-			$custom_content = ob_get_clean();
-	
-			// Create a temporary file to hold the custom content
-			$temp_file = tempnam(sys_get_temp_dir(), 'product_cat_template');
-			file_put_contents($temp_file, $custom_content);
-	
-			// Return the path to the temporary file as the new template file
-			return $temp_file;
+			// Append the desired file path inside the plugin directory
+			$file_path = $plugin_path . 'partials/taxonomy-product_cat.php';
+			return $file_path ;
 		}
 	
 		return $template;
