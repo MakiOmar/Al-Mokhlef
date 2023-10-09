@@ -481,6 +481,24 @@ class Mokhlef_Public {
 	<?php 
 	}
 
+	public function override_product_cat_template($template) {
+		// Check if we are on the product category taxonomy archive
+		if (is_tax('product_cat')) {
+	
+			// Call the taxonomy_product_cat_output method to get the custom content
+			$custom_content = $this->taxonomy_product_cat_output();
+	
+			// Create a temporary file to hold the custom content
+			$temp_file = tempnam(sys_get_temp_dir(), 'product_cat_template');
+			file_put_contents($temp_file, $custom_content);
+	
+			// Return the path to the temporary file as the new template file
+			return $temp_file;
+		}
+	
+		return $template;
+	}
+
 	function load_more_products_action_cb() {
 		$category_slug = $_POST['category_slug'];
 		$category_name = $_POST['category_name'];
