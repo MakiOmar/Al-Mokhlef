@@ -77,6 +77,7 @@ class Mokhlef_Public {
 		 */
 
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/mokhlef-public.css', array(), $this->version, 'all' );
+		wp_enqueue_style('cairo-font', 'https://fonts.googleapis.com/css?family=Cairo&display=swap');
 
 	}
 
@@ -101,6 +102,550 @@ class Mokhlef_Public {
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/mokhlef-public.js', array( 'jquery' ), $this->version, false );
 
+	}
+
+	function ajax_add_to_cart_action_cb() {
+
+		$product_id = apply_filters('ql_woocommerce_add_to_cart_product_id', absint($_POST['product_id']));
+
+		$quantity = empty($_POST['quantity']) ? 1 : wc_stock_amount($_POST['quantity']);
+
+		$variation_id = absint($_POST['variation_id']);
+
+		$passed_validation = apply_filters('ql_woocommerce_add_to_cart_validation', true, $product_id, $quantity);
+
+		$product_status = get_post_status($product_id);
+
+		if ($passed_validation && WC()->cart->add_to_cart($product_id, $quantity, $variation_id) && 'publish' === $product_status) { 
+
+			wc_add_to_cart_message(array($product_id => $quantity), true);
+
+			WC_AJAX :: get_refreshed_fragments();
+	
+		}else{
+			$data = array( 
+					'error' => true,
+					'product_url' => get_permalink($product_id));
+				echo wp_send_json($data);
+		}
+		wp_die();
+	}
+	public function ajax_add_to_cart_script(){?>
+	
+		<script>
+			jQuery(document).ready(function($) {
+				
+				$('body').on('click', '.single_add_to_cart_button' ,function(e){ 
+					e.preventDefault();
+					$thisbutton = $(this),
+					$form = $thisbutton.closest('form.cart'),
+					product_qty = $form.find('input[name=quantity]').val() || 1,
+					product_id = $form.find('input[name=product_id]').val() || 0,
+					variation_id = $form.find('input[name=variation_id]').val() || 0;
+					var data = {
+							action: 'ql_woocommerce_ajax_add_to_cart',
+							product_id: product_id,
+							product_sku: '',
+							quantity: product_qty,
+							variation_id: variation_id,
+						};
+					$.ajax({
+							type: 'post',
+							url: wc_add_to_cart_params.ajax_url,
+							data: data,
+							beforeSend: function (response) {
+								$thisbutton.removeClass('added').addClass('loading');
+							},
+							complete: function (response) {
+								$thisbutton.addClass('added').removeClass('loading');
+							}, 
+							success: function (response) { 
+								if (response.error & response.product_url) {
+									window.location = response.product_url;
+									return;
+								} else { 
+									$(document.body).trigger('added_to_cart', [response.fragments, response.cart_hash, $thisbutton]);
+								} 
+							}, 
+						}); 
+					 }); 
+			});
+		</script>
+	<?php
+
+	}
+	public function selected_variation_price_script(){
+		add_filter('woocommerce_add_to_cart_fragments', function ($fragments) {
+			// Remove the "View Cart" link from the AJAX response fragments
+			unset($fragments['.added_to_cart']);
+	
+			return $fragments;
+		});
+			
+		if( !function_exists('get_woocommerce_currency_symbol') ){
+			return;
+		}
+		$currency_symbol = get_woocommerce_currency_symbol();
+		?>
+		<script>
+		
+			jQuery(document).ready(function($) {
+				
+			  // Listen for variation select field changes
+			  $('body').on('change', '.variations select', function() {
+				var variationData = $(this).closest('.product').find('.variations_form').data('product_variations'); // Get the product variations data
+				
+				var selectedVariation = getSelectedVariation(variationData, $(this)); // Get the selected variation based on the selected attributes
+				
+				if (selectedVariation) {
+					var priceHtml = selectedVariation.price_html; // Get the price HTML from the selected variation
+					var priceElement = $(this).closest('.product').find('.product-details .price'); // Select the price element
+					console.log(priceElement.length);
+					
+					if (priceElement.length > 0) {
+						var currencySymbol = '<?php echo $currency_symbol ?>';
+						priceElement.each(function(){
+							if( $(this).find('del').length > 0 ){
+							
+								$(this).find('del bdi').html( selectedVariation.display_regular_price + '&nbsp;<span class="woocommerce-Price-currencySymbol">'+ currencySymbol +'</span>' );
+								$(this).find('ins bdi').html( selectedVariation.display_price + '&nbsp;<span class="woocommerce-Price-currencySymbol">'+ currencySymbol +'</span>' );
+							}else{
+								
+								//priceElement.append(selectedVariation.display_price);
+								$(this).find('bdi').html( selectedVariation.display_price + '&nbsp;<span class="woocommerce-Price-currencySymbol">'+ currencySymbol +'</span>' );
+							}
+						});
+						
+					}
+				}
+			  });
+				
+			  // Get the selected variation based on the selected attributes
+			  function getSelectedVariation(variationData, selectField) {
+				var selectedAttributes = {};
+	
+				// Collect selected attribute values
+				selectField.closest('.variations').find('select').each(function() {
+				  var attributeSlug = $(this).data('attribute_name');
+				  var attributeValue = $(this).val();
+	
+				  if (attributeSlug && attributeValue) {
+					selectedAttributes[attributeSlug] = attributeValue;
+				  }
+				});
+				
+				// Find matching variation based on selected attributes
+				for (var i = 0; i < variationData.length; i++) {
+				  var variation = variationData[i];
+	
+				  if (variationsMatch(variation.attributes, selectedAttributes)) {
+					  
+					return variation;
+				  }
+				}
+	
+				return null; // No matching variation found
+			  }
+	
+			  // Check if two sets of attributes match
+			  function variationsMatch(attributes1, attributes2) {
+				for (var attribute in attributes1) {
+				  if (!attributes2.hasOwnProperty(attribute) || attributes1[attribute] !== attributes2[attribute]) {
+					return false;
+				  }
+				}
+	
+				return true;
+			  }
+			  
+			  $('.variations select').trigger('change');
+			});
+		</script>
+	<?php
+		
+	}
+	public function variation_visibility_control( $children, $product ){
+		if(is_admin()){
+			return $children;
+		}
+		
+		foreach($children as $index => $variation_id){
+			$variation = wc_get_product($variation_id);
+			
+			$connected_attribute = array();
+			if ($variation && $variation->is_type('variation')) {
+				$variation_attributes = $variation->get_variation_attributes();
+				
+				if (!empty($variation_attributes)) {
+					$connected_attribute = $variation_attributes;
+				}
+			}
+			
+			
+			$set_hidden = false;
+			
+			if(!empty($connected_attribute) && is_array( $connected_attribute )){
+				foreach( $connected_attribute as $attribute_slug => $term_slug ){
+					
+					$term = get_term_by('slug', urldecode($term_slug), urldecode(str_replace('attribute_', '', $attribute_slug)) );
+					
+					if ($term && !is_wp_error($term)) {
+	
+							$is_hidden = get_term_meta($term->term_id, 'variation-visibility', true);
+							
+							if( $is_hidden === 'on' ){
+								$set_hidden = true;
+								break;
+							}
+					}
+				}
+				
+			}
+			$override_global_visibility = get_post_meta( $variation_id, '_v_visibility', true );
+			if($override_global_visibility && $override_global_visibility === 'yes'){
+				$set_hidden = false;
+			}
+			
+			if( $set_hidden ){
+				unset($children[$index]);
+			}
+		}
+		return $children;
+	}
+	public function remove_variations_reset_link_from_loop( $link ){
+		if( !is_singular() ){
+			return '';
+		}
+		
+		return $link;
+	}
+	
+	public function load_more_script(){
+		$category = get_queried_object();
+		$category_name = $category->name;
+		$category_slug = $category->slug;
+		?>
+		<script>
+			jQuery(document).ready(function($) {
+				
+				$('body').on('click', '.wc-variation-is-unavailable' , function(){
+					alert('عفوًا، هذا المنتج غير متوفر. يرجى اختيار مجموعة أخرى.');
+				});
+				$('body').on('click',"input.tmcp-radio",function (e) {
+					var current = this.id;
+					$("span.tm-epo-reset-radio").click();
+					$( "#" + current ).prop('checked', true);
+				});
+				$('#show-more-button').on('click', function(e) {
+					e.preventDefault();
+
+					var button = $(this);
+					var nextPage = button.data('next-page');
+					var categorySlug = '<?php echo $category_slug; ?>'; 
+					var categoryName = '<?php echo $category_name; ?>'; 
+					$.ajax({
+						url: '<?php echo admin_url("admin-ajax.php?lang=".get_locale()); ?>',
+						type: 'POST',
+						data: {
+							action: 'mj_load_more_products',
+							category_slug: categorySlug,
+							category_name: categoryName,
+							page: nextPage,
+						},
+						beforeSend: function() {
+							button.text('تحميل...');
+						},
+						success: function(response) {
+							$('.mj-products').append(response);
+
+							$('body').find('.variations select').trigger('change');
+							button.text('عرض المزيد');
+
+							if (response === '') {
+								button.remove();
+							} else {
+								button.data('next-page', nextPage + 1);
+							}
+						},
+					});
+				});
+			});
+		</script>
+	<?php
+
+	}
+	public function taxonomy_product_cat_args($paged, $category_slug){
+        $args = array(
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => 8,
+            'paged' => $paged,
+            'tax_query' => array(
+                array(
+                    'taxonomy' => 'product_cat',
+                    'field' => 'slug',
+                    'terms' => $category_slug,
+                ),
+            ),
+        );
+
+		return $args;
+
+	}
+	/**
+	 * Product loop item markup
+	 *
+	 * @param object $product Product object.
+	 * @param string $categories Categories html.
+	 * @return void
+	 */
+	public function product_loop_item_html( $product, $categories ){
+		?>
+		<li class="product">
+			<div class="product-image">
+				<a href="<?php echo get_permalink(); ?>"><?php echo $product->get_image('full'); ?></a>
+			</div>
+
+			<div class="product-details">
+				<p class="category"><?php echo $categories; ?></p>
+				<h3 class="product-title"><a href="<?php echo get_permalink(); ?>"><?php echo get_the_title(); ?></a></h3>
+				<p class="price"><?php echo $product->get_price_html(); ?></p>
+				<?php
+					$stk_qte = $product->get_stock_quantity();
+
+					if ($product->is_type('variable')) {
+
+						woocommerce_variable_add_to_cart();
+					} else {
+						woocommerce_template_loop_add_to_cart(array('quantity' => 1)); // Set quantity to 1 for simple products
+					}
+					if ($product->get_stock_status() === 'outofstock' || $stk_qte <= 0 ) {
+						echo '<script>jQuery("#product-'. $product->get_id().'").find(".single_add_to_cart_button").prop("disabled", true).addClass("disabled wc-variation-is-unavailable");</script>';
+					}
+				?>
+			</div>
+		</li>
+			<?php
+	}
+
+	public function products_loop_html($args, $category_name, $paged, $load_more = true){
+		$products_query = new WP_Query($args);
+
+		echo '<div class="mj-products-wrapper">';
+		if ($products_query->have_posts()) {
+
+			echo '<ul class="mj-products">';
+
+			while ($products_query->have_posts()) {
+				$products_query->the_post();
+				global $product;
+				$this->product_loop_item_html( $product, $category_name );
+				
+			}
+			echo '</ul>';
+			if($load_more){
+				// Show More Button
+				$next_page = $paged + 1;
+
+				if ($products_query->max_num_pages > $paged) {
+					echo '<button id="show-more-button" data-next-page="' . $next_page . '">عرض المزيد</button>';
+				}
+			}
+			
+		} else {
+			echo '<p>No products found.</p>';
+		}
+		echo '</div>';
+
+		wp_reset_postdata();
+	}
+
+	public function taxonomy_product_cat_output(){?>
+		<div id="primary" class="content-area">
+			<main id="main" class="site-main" role="main">
+
+				<?php
+				$category = get_queried_object();
+				$category_name = $category->name;
+				$category_slug = $category->slug;
+				$paged = get_query_var('paged') ? get_query_var('paged') : 1;
+
+				$args = $this->taxonomy_product_cat_args($paged, $category_slug);
+
+				$this->products_loop_html($args, $category_name, $paged, false);
+				
+				?>
+
+			</main>
+		</div>
+	<?php 
+	}
+
+	function load_more_products_action_cb() {
+		$category_slug = $_POST['category_slug'];
+		$category_name = $_POST['category_name'];
+		$page = $_POST['page'];
+
+		$args = $this->taxonomy_product_cat_args($page, $category_slug);
+		
+		$products_query = new WP_Query( $args );
+	
+		ob_start();
+	
+		if ($products_query->have_posts()) {
+			while ($products_query->have_posts()) {
+				$products_query->the_post();
+	
+				global $product;
+	
+				$this->product_loop_item_html( $product, $category_name );
+			}
+		}
+	
+		wp_reset_postdata();
+	
+		$output = ob_get_clean();
+		$output = str_replace('Add to cart', 'إضافة إلى السلة' ,$output);
+		$output = str_replace('Choose an option', 'تحديد أحد الخيارات' ,$output);
+		echo $output;
+	
+		die();
+	}
+
+	public function inline_styles(){?>
+
+		<style>
+			.added_to_cart.wc-forward{
+				display:none
+			}
+			
+			<?php if(!is_singular()) {?>
+			.mj-products .variations th.label, .mj-products .quantity{
+				display:none!important;
+			}
+			
+			.mj-products table:not(.has-background) tbody td {
+				background-color: transparent !important;
+			}
+			<?php }?>
+
+			.mj-products-wrapper{
+				text-align: center;
+			}
+			.mj-products-wrapper .product-title{
+				height: 70px;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+			.mj-products{
+				display:flex;
+				flex-wrap: wrap;
+				align-items: flex-start;
+				list-style-type:none!important;
+				padding:0;
+				max-width: 85%;
+				margin: auto;
+				
+			}
+
+			.mj-products li{
+				width: 25%;
+				margin-left: -5px;
+				margin-right: -5px;
+				padding: 20px;
+				text-align: center;
+				
+			}
+			.mj-products li:first-child{
+				margin-right:0;
+			}
+			.mj-products li .add_to_cart_button{
+				margin: 10px 0;
+				border-radius: 10px;
+			}
+			#show-more-button{
+				background-color: #f1ae43;
+				color: #000;
+				border-radius: 5px;
+				margin: 20px 0;
+			}
+			@media screen and (min-width:480px) and (max-width:960px) {
+				.mj-products li{
+					width: 33.333%;
+					
+				}
+			}
+			@media screen and (max-width:479px){
+				.mj-products li{
+					width: 50%;
+					padding: 10px;
+					
+				}
+			}
+		
+			body, p, h1,h2,h3, h4, h5, h6, li, button, input, select{
+				font-family: "Cairo";
+			}
+			select, .select-resize-ghost, .select2-container .select2-choice, .select2-container .select2-selection {
+				-webkit-box-shadow: inset 0 -1.4em 1em 0 rgba(0,0,0,0.02);
+				box-shadow: inset 0 -1.4em 1em 0 rgba(0,0,0,0.02);
+				background-color: #fff;
+				-webkit-appearance: none;
+				-moz-appearance: none;
+				background-image: url("data:image/svg+xml;charset=utf8, %3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='feather feather-chevron-down'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+				background-position: left .45em top 50%;
+				background-repeat: no-repeat;
+				padding-left: 1.4em;
+				background-size: auto 16px;
+				border-radius: 0;
+				border:none;
+				outline:none;
+				display: block;
+			}
+			input[type='email'], input[type='date'], input[type='search'], input[type='number'], input[type='text'], input[type='tel'], input[type='url'], input[type='password'], textarea, select, .select-resize-ghost, .select2-container .select2-choice, .select2-container .select2-selection {
+				-webkit-box-sizing: border-box;
+				box-sizing: border-box;
+				border: 1px solid #ddd;
+				padding: 0 .75em;
+				height: 2.507em;
+				font-size: .97em;
+				border-radius: 0;
+				max-width: 100%;
+				width: 100%;
+				vertical-align: middle;
+				background-color: #fff;
+				color: #333;
+				-webkit-box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+				box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+				-webkit-transition: color .3s, border .3s, background .3s, opacity .3s;
+				-o-transition: color .3s, border .3s, background .3s, opacity .3s;
+				transition: color .3s, border .3s, background .3s, opacity .3s;
+			}
+			.after-price {
+				font-size: 80%;
+				color: red;
+			}
+			.stk_qte {
+				font-weight: 700;
+				font-size: 0.8em;
+				margin-top: 7px;
+				padding: 5px 0;
+				color: white;
+				border-radius: 10px;
+			}
+			.stk_qte.low {
+				background: red;
+			}
+			.stk_qte.mid {
+				background: orange;
+			}
+			.stk_qte.high {
+				background: #7a9c59;
+			}
+		</style>
+
+	<?php 
 	}
 	// Check if Variation Dynamic Pricing is enabled for the current product
 	public function is_variation_dynamic_pricing_enabled( $product_id ) {

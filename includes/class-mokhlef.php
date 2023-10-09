@@ -184,13 +184,34 @@ class Mokhlef {
 		//Actions
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-		$this->loader->add_action( 'woocommerce_before_calculate_totals', $plugin_public, 'conditional_variation_dynamic_pricing', 10, 1 );
+		$this->loader->add_action( 'wp_head', $plugin_public, 'inline_styles' );
+		$this->loader->add_action( 'wp_footer', $plugin_public, 'load_more_script' );
+		$this->loader->add_action( 'wp_footer', $plugin_public, 'selected_variation_price_script' );
+		$this->loader->add_action( 'wp_footer', $plugin_public, 'ajax_add_to_cart_script' );
+		$this->loader->add_action( 'wp_ajax_ql_woocommerce_ajax_add_to_cart', $plugin_public, 'ajax_add_to_cart_action_cb' );
+		$this->loader->add_action( 'wp_ajax_nopriv_ql_woocommerce_ajax_add_to_cart', $plugin_public, 'ajax_add_to_cart_action_cb' );
+		$this->loader->add_action( 'wp_ajax_mj_load_more_products', $plugin_public, 'load_more_products_action_cb' );
+		$this->loader->add_action( 'wp_ajax_nopriv_mj_load_more_products', $plugin_public, 'load_more_products_action_cb' );
+
+		/**
+		 * Disabled for future fix
+		 */
+		//$this->loader->add_action( 'woocommerce_before_calculate_totals', $plugin_public, 'conditional_variation_dynamic_pricing', 10, 1 );
 		$this->loader->add_action( 'woocommerce_checkout_create_order_line_item', $plugin_public,'add_values_to_order_item_meta', 10, 4 );
 		$this->loader->add_action('woocommerce_admin_order_data_after_billing_address', $plugin_public, 'display_order_meta');
 		//Filters
-		$this->loader->add_filter( 'woocommerce_add_to_cart_validation', $plugin_public, 'add_to_cart_validation', 10, 3 );
-		$this->loader->add_filter( 'woocommerce_order_item_display_meta_key', $plugin_public, 'order_item_display_meta_key', 99, 2 );	
-		$this->loader->add_filter( 'woocommerce_product_variation_get_price', $plugin_public, 'frontend_dynamic_variation_price', 10, 2 );
+		$this->loader->add_filter( 'woocommerce_order_item_display_meta_key', $plugin_public, 'order_item_display_meta_key', 99, 2 );
+		$this->loader->add_filter( 'woocommerce_get_children', $plugin_public, 'variation_visibility_control', 99, 2 );
+		$this->loader->add_filter( 'woocommerce_reset_variations_link', $plugin_public, 'remove_variations_reset_link_from_loop', 99, 2 );
+		/**
+		 * Disabled for future fix
+		 */
+		//$this->loader->add_filter( 'woocommerce_add_to_cart_validation', $plugin_public, 'add_to_cart_validation', 10, 3 );
+		//$this->loader->add_filter( 'woocommerce_product_variation_get_price', $plugin_public, 'frontend_dynamic_variation_price', 10, 2 );
+
+		/**
+		 * Disabled because no need
+		 */
 		//$this->loader->add_filter( 'woocommerce_variable_price_html', $plugin_public, 'frontend_dynamic_variation_price', 10, 2 );
 	}
 
