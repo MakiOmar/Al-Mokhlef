@@ -1,6 +1,6 @@
  {
  	"name" : "Al-Mokhlef Optimizations",
- 	"version" : "1.0.09",
+ 	"version" : "1.0.10",
  	"download_url" : "https://github.com/MakiOmar/Al-Mokhlef/archive/refs/heads/master.zip",
  	"sections" : {
  		"description" : "A plugin built specially for Al-Mokhlef for optimizations."
