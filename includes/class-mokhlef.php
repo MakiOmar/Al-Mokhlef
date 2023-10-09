@@ -204,7 +204,7 @@ class Mokhlef {
 		$this->loader->add_filter( 'woocommerce_get_children', $plugin_public, 'variation_visibility_control', 99, 2 );
 		$this->loader->add_filter( 'woocommerce_reset_variations_link', $plugin_public, 'remove_variations_reset_link_from_loop', 99, 2 );
 		$this->loader->add_filter( 'template_include', $plugin_public, 'override_product_cat_template', 99, 2 );
-
+		$this->loader->add_filter( 'ql_woocommerce_add_to_cart_validation', $plugin_public, 'disable_distributions_loop_extra_options', 99, 2 );
 		/**
 		 * Disabled for future fix
 		 */

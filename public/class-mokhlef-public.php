@@ -103,7 +103,12 @@ class Mokhlef_Public {
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/mokhlef-public.js', array( 'jquery' ), $this->version, false );
 
 	}
-
+	function disable_distributions_loop_extra_options($passed, $product_id){
+		if ( !is_singular() && has_term( 'distributions' , 'product_cat', $product_id, 'slug' ) ) {
+			$passed = false;
+		}
+		return $passed;
+	}
 	function ajax_add_to_cart_action_cb() {
 
 		$product_id = apply_filters('ql_woocommerce_add_to_cart_product_id', absint($_POST['product_id']));
@@ -126,9 +131,9 @@ class Mokhlef_Public {
 			$data = array( 
 					'error' => true,
 					'product_url' => get_permalink($product_id));
-				echo wp_send_json($data);
+				wp_send_json($data);
 		}
-		wp_die();
+		die();
 	}
 	public function ajax_add_to_cart_script(){?>
 	
@@ -160,8 +165,8 @@ class Mokhlef_Public {
 								$thisbutton.addClass('added').removeClass('loading');
 							}, 
 							success: function (response) { 
-								if (response.error & response.product_url) {
-									window.location = response.product_url;
+								if (response.error && response.product_ur) {
+									window.location.replace(response.product_url);
 									return;
 								} else { 
 									$(document.body).trigger('added_to_cart', [response.fragments, response.cart_hash, $thisbutton]);
@@ -484,9 +489,14 @@ class Mokhlef_Public {
 	public function override_product_cat_template($template) {
 		// Check if we are on the product category taxonomy archive
 		if (is_tax('product_cat')) {
-	
+			ob_start();
+
+			get_header();
+			$this->taxonomy_product_cat_output();
+			get_footer();
+
 			// Call the taxonomy_product_cat_output method to get the custom content
-			$custom_content = $this->taxonomy_product_cat_output();
+			$custom_content = ob_get_clean();
 	
 			// Create a temporary file to hold the custom content
 			$temp_file = tempnam(sys_get_temp_dir(), 'product_cat_template');
