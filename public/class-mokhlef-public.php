@@ -379,20 +379,172 @@ class Mokhlef_Public {
 	<?php
 
 	}
-	public function taxonomy_product_cat_args($paged, $category_slug){
+
+	/**
+	 * Home products loop args
+	 *
+	 * @param int $paged
+	 * @param array $categories
+	 * @return void
+	 */
+	public function home_products_loop_args($paged, $categories){
         $args = array(
             'post_type' => 'product',
             'post_status' => 'publish',
-            'posts_per_page' => 8,
-            'paged' => $paged,
+            'posts_per_page' => 15,
+			'paged' => $paged,
             'tax_query' => array(
                 array(
                     'taxonomy' => 'product_cat',
-                    'field' => 'slug',
-                    'terms' => $category_slug,
+                    'terms' => $categories,
                 ),
             ),
         );
+		return $args;
+
+	}
+	public function home_products_query_while($products_query){
+		while ($products_query->have_posts()) {
+			$products_query->the_post();
+			global $product;
+			$item_categories = $this->home_products_loop_categories($product);	
+			$this->product_loop_item_html( $product, $item_categories );
+		}
+	}
+	public function home_load_more_products_ajax() {
+		$categories = explode(',',$_POST['categories']);
+		$page = $_POST['page'];
+		$args = $this->home_products_loop_args($page, $categories);
+	
+		$products_query = new WP_Query($args);
+	
+		ob_start();
+	
+		if ($products_query->have_posts()) {
+			$this->home_products_query_while($products_query);
+		}
+	
+		wp_reset_postdata();
+	
+		$output = ob_get_clean();
+		$output = str_replace('Add to cart', 'إضافة إلى السلة' ,$output);
+		$output = str_replace('Choose an option', 'تحديد أحد الخيارات' ,$output);
+		echo $output;
+	
+		die();
+	}
+	public function home_products_loop_categories($product){
+		$terms = get_the_terms( $product->get_id(), 'product_cat' ); // Retrieve the product categories
+						
+		$item_categories = '';
+		if ( $terms && ! is_wp_error( $terms ) ) {
+			$term_names = array();
+			foreach ( $terms as $term ) {
+				$term_names[] = $term->name;
+			}
+			$item_categories = implode( ', ', $term_names );
+
+		}
+
+		return $item_categories;
+	}
+	public function home_products_load_more_script(){?>
+		<script>
+			jQuery(document).ready(function($) {
+				if( $('.basic-loop').length === 0 ){
+					return;
+				}
+				$('#show-more-button').on('click', function(e) {
+					e.preventDefault();
+			
+					var button = $(this);
+					var nextPage = button.data('next-page');
+					var categories = button.data('cats'); 
+					$.ajax({
+						url: '<?php echo admin_url("admin-ajax.php?lang=".get_locale()); ?>',
+						type: 'POST',
+						data: {
+							action: 'mj_home_load_more_products',
+							categories: categories,
+							page: nextPage,
+						},
+						beforeSend: function() {
+							button.text('تحميل...');
+						},
+						success: function(response) {
+							$('.mj-products').append(response);
+			
+							$('body').find('.variations select').trigger('change');
+							button.text('عرض المزيد');
+			
+							if (response === '') {
+								button.remove();
+							} else {
+								button.data('next-page', nextPage + 1);
+							}
+						},
+					});
+				});
+			});
+		</script>
+	<?php
+	}
+	public function home_products_shortcode_cb(){
+		ob_start();
+		?>
+		<div id="primary" class="content-area basic-loop">
+			<main id="main" class="site-main" role="main">
+		
+				<?php
+				$paged = get_query_var('paged') ? get_query_var('paged') : 1;
+				$categories = array(189,227);
+				$args = $this->home_products_loop_args($paged, $categories);
+		
+				$products_query = new WP_Query($args);
+				echo '<div class="mj-products-wrapper">';
+				if ($products_query->have_posts()) {
+		
+					echo '<ul class="mj-products">';
+		
+					$this->home_products_query_while($products_query);
+		
+					echo '</ul>';
+					// Show More Button
+					$next_page = $paged + 1;
+		
+					if ($products_query->max_num_pages > $paged) {
+						echo '<button id="show-more-button" data-cats= "'.implode(',', $categories).'" data-next-page="' . $next_page . '">عرض المزيد</button>';
+					}
+		
+				} else {
+					echo '<p>No products found.</p>';
+				}
+				echo '</div>';
+		
+				wp_reset_postdata();
+				?>
+		
+			</main>
+		</div>
+
+		<?php
+		$this->home_products_load_more_script();
+		return ob_get_clean();
+	}
+	public function taxonomy_product_cat_args($paged, $category_slug){
+		$args = array(
+			'post_type' => 'product',
+			'post_status' => 'publish',
+			'posts_per_page' => 8,
+			'paged' => $paged,
+			'tax_query' => array(
+				array(
+					'taxonomy' => 'product_cat',
+					'field' => 'slug',
+					'terms' => $category_slug,
+				),
+			),
+		);
 
 		return $args;
 
